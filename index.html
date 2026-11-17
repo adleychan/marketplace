@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marketplace Listing Writer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #f7f8fa;
+    color: #1f2430;
+    line-height: 1.5;
+  }
+  .page { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { text-align: center; margin-bottom: 24px; }
+  header h1 { font-size: 1.5rem; font-weight: 700; }
+  header p { color: #5b6472; font-size: 0.95rem; margin-top: 4px; }
+
+  section {
+    background: #ffffff;
+    border: 1px solid #e4e7ec;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  section h2 { font-size: 1.1rem; margin-bottom: 4px; }
+  .hint { font-size: 0.85rem; color: #5b6472; margin-bottom: 14px; }
+
+  /* Upload */
+  #dropZone {
+    border: 2px dashed #b9c1cd;
+    border-radius: 10px;
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    color: #5b6472;
+    transition: border-color .15s, background .15s;
+  }
+  #dropZone:hover, #dropZone.dragover { border-color: #3b82f6; background: #f0f6ff; }
+  #dropZone strong { color: #1f2430; }
+  #photoPreview { display: none; margin-top: 14px; text-align: center; }
+  #photoPreview img {
+    max-width: 100%; max-height: 260px;
+    border-radius: 10px; border: 1px solid #e4e7ec;
+  }
+  .replaceLink { margin-top: 8px; font-size: 0.85rem; }
+  .replaceLink button {
+    background: none; border: none; color: #3b82f6; cursor: pointer;
+    font-size: 0.85rem; text-decoration: underline; padding: 0;
+  }
+  .btn {
+    display: inline-block;
+    background: #3b82f6; color: #fff;
+    border: none; border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 0.95rem; font-weight: 600;
+    cursor: pointer;
+  }
+  .btn:hover { background: #2f6fe0; }
+  .btn:disabled { background: #a9c4f2; cursor: not-allowed; }
+  .btn.secondary {
+    background: #fff; color: #3b82f6;
+    border: 1px solid #3b82f6;
+  }
+  .btn.secondary:hover { background: #f0f6ff; }
+  .genRow { margin-top: 14px; text-align: center; }
+
+  /* Draft */
+  #draftTitle {
+    width: 100%;
+    font-size: 1rem; font-weight: 600;
+    padding: 10px 12px;
+    border: 1px solid #d5dae2; border-radius: 8px;
+    margin-bottom: 10px;
+    font-family: inherit;
+  }
+  #draftBody {
+    width: 100%;
+    min-height: 220px;
+    padding: 12px;
+    border: 1px solid #d5dae2; border-radius: 8px;
+    font-family: inherit; font-size: 0.95rem;
+    resize: vertical; white-space: pre-wrap;
+  }
+  #draftTitle:focus, #draftBody:focus, .field input:focus { outline: 2px solid #93c0f7; border-color: #3b82f6; }
+  .draftActions { margin-top: 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  #copyConfirm {
+    display: none; color: #15803d; font-size: 0.9rem; font-weight: 600;
+  }
+
+  /* Quick details */
+  .fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .field label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
+  .field input {
+    width: 100%; padding: 9px 10px;
+    border: 1px solid #d5dae2; border-radius: 8px;
+    font-size: 0.95rem; font-family: inherit;
+  }
+
+  /* Examples */
+  .examples { margin-top: 8px; }
+  .example {
+    border: 1px solid #e4e7ec; border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 10px;
+    font-size: 0.9rem;
+    position: relative;
+    cursor: pointer;
+    transition: border-color .15s;
+  }
+  .example:hover { border-color: #3b82f6; }
+  .example .exTitle { font-weight: 700; }
+  .example .exMeta { color: #5b6472; margin-top: 2px; }
+  .example .exBody { color: #3a4150; margin-top: 6px; white-space: pre-wrap; }
+  .example .useTag {
+    position: absolute; top: 10px; right: 12px;
+    font-size: 0.75rem; color: #3b82f6; font-weight: 600;
+  }
+
+  footer { text-align: center; font-size: 0.8rem; color: #8a93a3; margin-top: 8px; }
+
+  @media (max-width: 560px) {
+    .fields { grid-template-columns: 1fr; }
+    header h1 { font-size: 1.25rem; }
+    section { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Marketplace Listing Writer</h1>
+    <p>Turn a product photo into a ready-to-use listing. Nothing is saved — everything stays on this page.</p>
+  </header>
+
+  <!-- 1. Upload Photo -->
+  <section id="sectionUpload">
+    <h2>1 · Upload Photo</h2>
+    <p class="hint">Add a photo of your item. I'll study it and write a marketplace-style listing draft for you — you can edit every word before copying.</p>
+    <div id="dropZone" role="button" tabindex="0" aria-label="Choose a product photo">
+      <div style="font-size:2rem">📷</div>
+      <p><strong>Tap to choose a product photo</strong><br>or drag &amp; drop an image here (JPG / PNG)</p>
+    </div>
+    <input type="file" id="photoInput" accept="image/*" hidden>
+    <div id="photoPreview">
+      <img id="previewImg" alt="Product photo preview">
+      <p class="replaceLink">Photo loaded. <button id="replaceBtn" type="button">Replace photo</button></p>
+    </div>
+    <div class="genRow">
+      <button class="btn" id="generateBtn" type="button" disabled>✍️ Write Listing from Photo</button>
+    </div>
+  </section>
+
+  <!-- 2. Listing Draft -->
+  <section id="sectionDraft">
+    <h2>2 · Listing Draft</h2>
+    <p class="hint">Review and edit the listing below. Your edits stay on screen and are what gets copied.</p>
+    <input id="draftTitle" type="text" aria-label="Listing title" placeholder="Listing title">
+    <textarea id="draftBody" aria-label="Listing description" placeholder="The listing description will appear here..."></textarea>
+    <div class="draftActions">
+      <button class="btn secondary" id="copyBtn" type="button">📋 Copy Ready Text</button>
+      <span id="copyConfirm">✓ Copied! Your listing is ready to paste.</span>
+    </div>
+    <div class="examples">
+      <p class="hint" style="margin-top:14px"><strong>Example listings</strong> — tap one to load it into the draft (sample data only):</p>
+      <div id="exampleList"></div>
+    </div>
+  </section>
+
+  <!-- 3. Quick Details -->
+  <section id="sectionDetails">
+    <h2>3 · Quick Details</h2>
+    <p class="hint">Add these simple facts and the listing updates to match. Prices are yours to set — the app never invents real values.</p>
+    <div class="fields">
+      <div class="field">
+        <label for="productName">Product name</label>
+        <input id="productName" type="text" placeholder="e.g. IKEA Kallax shelf">
+      </div>
+      <div class="field">
+        <label for="condition">Condition</label>
+        <input id="condition" type="text" list="conditionList" placeholder="e.g. Like new">
+        <datalist id="conditionList">
+          <option value="Brand new"></option>
+          <option value="Like new"></option>
+          <option value="Good"></option>
+          <option value="Used — some wear"></option>
+          <option value="For parts / not working"></option>
+        </datalist>
+      </div>
+      <div class="field">
+        <label for="price">Asking price (RM)</label>
+        <input id="price" type="text" inputmode="decimal" placeholder="e.g. 120">
+      </div>
+    </div>
+    <p class="hint" style="margin-top:12px">Tip: mention the condition honestly and include your area (e.g. "COD Cheras") — listings with clear details sell faster.</p>
+  </section>
+
+  <footer>Sample data only · Works fully offline · Nothing is saved between visits</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Element references ----------
+  var draftTitle = document.getElementById("draftTitle");
+  var draftBody = document.getElementById("draftBody");
+  var productName = document.getElementById("productName");
+  var conditionInput = document.getElementById("condition");
+  var priceInput = document.getElementById("price");
+  var exampleList = document.getElementById("exampleList");
+  var dropZone = document.getElementById("dropZone");
+  var photoInput = document.getElementById("photoInput");
+  var photoPreview = document.getElementById("photoPreview");
+  var previewImg = document.getElementById("previewImg");
+  var generateBtn = document.getElementById("generateBtn");
+  var copyBtn = document.getElementById("copyBtn");
+  var copyConfirm = document.getElementById("copyConfirm");
+
+  // ---------- Example entries (made up, Malaysia-specific) ----------
+  var EXAMPLES = [
+    {
+      title: "IKEA Kallax Shelf Unit 4x4 — White, Like New",
+      name: "IKEA Kallax Shelf Unit 4x4",
+      condition: "Like new",
+      price: "180",
+      body: "IKEA Kallax 4x4 shelf unit in white, bought last year and barely used. Like new condition, no scratches or stains. Perfect for books, display items or vinyl records. Self pickup at Wangsa Maju, KL. COD available, or postage can be arranged (buyer pays shipping). RM180 firm."
+    },
+    {
+      title: "Xiaomi Mi Band 8 — Good condition, full box",
+      name: "Xiaomi Mi Band 8",
+      condition: "Good",
+      price: "75",
+      body: "Selling my Xiaomi Mi Band 8, still in good working condition. Battery health is fine, screen has no cracks — just light wear on the strap from daily use. Comes with the original box, charger cable and an extra strap. COD area Setapak / Danau Kota, postage available. RM75 negotiable for serious buyers."
+    },
+    {
+      title: "Study Table with Drawers — Solid, moved house sale",
+      name: "Wooden study table with 2 drawers",
+      condition: "Used — some wear",
+      price: "60",
+      body: "Moving out sale! Wooden study table with 2 smooth drawers, around 120cm wide. Some wear on the surface (see photo) but very sturdy and works great for studying or WFH. Pickup only at Shah Alam, Section 7 — bring your own transport. RM60, first come first served."
+    }
+  ];
+
+  var exampleList = document.getElementById("exampleList");
+  EXAMPLES.forEach(function (ex) {
+    var div = document.createElement("div");
+    div.className = "example";
+    div.innerHTML =
+      '<span class="useTag">Tap to use →</span>' +
+      '<div class="exTitle"></div>' +
+      '<div class="exMeta"></div>' +
+      '<div class="exBody"></div>';
+    div.querySelector(".exTitle").textContent = ex.title;
+    div.querySelector(".exMeta").textContent = ex.condition + " · RM" + ex.price + " (sample)";
+    div.querySelector(".exBody").textContent = ex.body;
+    div.addEventListener("click", function () {
+      loadListing(ex.title, ex.body);
+      productName.value = ex.name;
+      conditionInput.value = ex.condition;
+      priceInput.value = ex.price;
+      document.getElementById("sectionDraft").scrollIntoView({ behavior: "smooth" });
+    });
+    exampleList.appendChild(div);
+  });
+
+  // Pre-load the first example so the draft section is never empty
+  function loadListing(title, body) {
+    draftTitle.value = title;
+    draftBody.value = body;
+  }
+  loadListing(EXAMPLES[0].title, EXAMPLES[0].body);
+  productName.value = EXAMPLES[0].name;
+  conditionInput.value = EXAMPLES[0].condition;
+  priceInput.value = EXAMPLES[0].price;
+
+  // ---------- Photo upload ----------
+  var photoDataUrl = null;
+
+  dropZone.addEventListener("click", function () { photoInput.click(); });
+  dropZone.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); photoInput.click(); }
+  });
+  document.getElementById("replaceBtn").addEventListener("click", function (e) {
+    e.stopPropagation();
+    photoInput.click();
+  });
+  photoInput.addEventListener("change", function () {
+    if (photoInput.files && photoInput.files[0]) handlePhoto(photoInput.files[0]);
+  });
+  ["dragover", "dragenter"].forEach(function (ev) {
+    dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.add("dragover"); });
+  });
+  ["dragleave", "drop"].forEach(function (ev) {
+    dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.remove("dragover"); });
+  });
+  dropZone.addEventListener("drop", function (e) {
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handlePhoto(e.dataTransfer.files[0]);
+  });
+
+  function handlePhoto(file) {
+    if (!file.type.startsWith("image/")) return;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      photoDataUrl = e.target.result;
+      previewImg.src = photoDataUrl;
+      photoPreview.style.display = "block";
+      dropZone.style.display = "none";
+      generateBtn.disabled = false;
+      generateBtn.textContent = "✍️ Write Listing from Photo";
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ---------- Feature 1: Write Listing from Photo ----------
+  generateBtn.addEventListener("click", function () {
+    if (!photoDataUrl) return;
+    generateBtn.disabled = true;
+    generateBtn.textContent = "✍️ Writing…";
+    setTimeout(function () { // simulated instant, on-screen generation
+      var title = buildTitle();
+      var body = buildBody();
+      loadListing(title, body);
+      generateBtn.disabled = false;
+      generateBtn.textContent = "🔁 Regenerate Listing";
+      document.getElementById("sectionDraft").scrollIntoView({ behavior: "smooth" });
+    }, 400);
+  });
+
+  function buildTitle() {
+    var n = productName.value.trim() || "Your item";
+    var c = conditionInput.value.trim();
+    return c ? n + " — " + c : n;
+  }
+
+  function buildBody() {
+    var n = productName.value.trim() || "Your item";
+    var c = conditionInput.value.trim() || "used";
+    var p = priceInput.value.trim();
+    var lines = [];
+    lines.push("Selling: " + n + " (" + c + ")");
+    lines.push("");
+    lines.push("Item is in " + c.toLowerCase() + " condition. Please refer to the photo for the actual look of the item.");
+    if (p) lines.push("Asking price: RM" + p + " (negotiable for serious buyers).");
+    lines.push("COD around Klang Valley preferred, postage available at buyer's cost.");
+    lines.push("");
+    lines.push("[Add your pickup area and contact preference here]");
+    return lines.join("\n");
+  }
+
+  // ---------- Feature 2: edits stay (the textarea is the source of truth) ----------
+  // Nothing special needed: draftTitle/draftBody are user-editable and never overwritten
+  // except on explicit generate / example-tap actions.
+
+  // ---------- Feature 3: Copy Ready Text ----------
+  var confirmTimer = null;
+
+  copyBtn.addEventListener("click", function () {
+    var text = draftTitle.value.trim() + "\n\n" + draftBody.value;
+    function showConfirm() {
+      copyConfirm.style.display = "inline";
+      clearTimeout(confirmTimer);
+      confirmTimer = setTimeout(function () { copyConfirm.style.display = "none"; }, 2500);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(showConfirm, function () { fallbackCopy(text, showConfirm); });
+    } else {
+      fallbackCopy(text, showConfirm);
+    }
+  });
+
+  function fallbackCopy(text, done) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); done(); } catch (e) { /* no-op */ }
+    document.body.removeChild(ta);
+  }
+
+  // ---------- Quick Details live update ----------
+  function applyDetailsToTitle() {
+    var c = conditionInput.value.trim();
+    var base = draftTitle.value;
+    // If the title was auto-generated (contains " — condition"), keep the pattern
+    var dashIdx = base.indexOf(" — ");
+    var stem = dashIdx !== -1 ? base.slice(0, dashIdx) : base;
+    if (!stem.trim()) return;
+    draftTitle.value = c ? stem + " — " + c : stem;
+  }
+
+  function updatePriceLine() {
+    // Replace an existing asking-price line, or add one
+    var p = priceInput.value.trim();
+    var lines = draftBody.value.split("\n");
+    var replaced = false;
+    for (var i = 0; i < lines.length; i++) {
+      if (/^Asking price:/i.test(lines[i])) {
+        lines[i] = p ? "Asking price: RM" + p + " (negotiable for serious buyers)." : "";
+        replaced = true;
+        break;
+      }
+    }
+    if (!replaced && p) {
+      lines.push("", "Asking price: RM" + p + " (negotiable for serious buyers).");
+    }
+    draftBody.value = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  }
+
+  conditionInput.addEventListener("input", applyDetailsToTitle);
+  priceInput.addEventListener("input", updatePriceLine);
+})();
+</script>
+</body>
+</html>
